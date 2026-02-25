@@ -18,11 +18,11 @@ A **lightweight, pure, production-ready SSE (Server-Sent Events) stream parser**
 ## 📦 Installation
 
 ```bash
-pnpm add sse-stream-parser
+pnpm add sse-line-parser
 # or
-npm install sse-stream-parser
+npm install sse-line-parser
 # or
-yarn add sse-stream-parser
+yarn add sse-line-parser
 ```
 
 ---
@@ -52,7 +52,7 @@ This plugin is **only responsible for**:
 ### 1️⃣ Basic Example (Node.js / Edge)
 
 ```ts
-import { parseSSEStream } from "sse-stream-parser";
+import { parseSSEStream } from "sse-line-parser";
 
 const res = await fetch(url, options);
 
