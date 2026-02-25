@@ -1,6 +1,6 @@
 {
   "name": "sse-line-parser",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "A simple parser for Server-Sent Events (SSE) streams",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
