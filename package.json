@@ -17,6 +17,14 @@
       }
     }
   },
+  "repository": {
+    "type": "git",
+    "url": "git@github.com:TangWenZERO/sse-line-parse.git"
+  },
+  "bugs": {
+    "url": "https://github.com/TangWenZERO/sse-line-parse/issues"
+  },
+  "homepage": "https://github.com/TangWenZERO/sse-line-parse",
   "files": [
     "dist/**/*"
   ],
