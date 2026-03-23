@@ -5,21 +5,14 @@ export type LineData = {
   error?: string;
 };
 // Define the structure for parsed Server-Sent Event (SSE) line data
-export type ParseState = {
-  lineData: Omit<LineData, "data">;
-  dataBuffer: string[];
-};
-export function createParseState(): ParseState {
-  return { lineData: {}, dataBuffer: [] };
-}
 
 // Global state variables to maintain parsing context across multiple lines
 let lineData: LineData = { data: null }; // Stores event metadata (id, event type)
 let dataBuffer: string[] = []; // Accumulates multi-line data segments
 
-function flushEvent(state: ParseState) {
-  if (state.dataBuffer.length === 0) return null;
-  const raw = state.dataBuffer.join("\n");
+function flushEvent() {
+  if (dataBuffer.length === 0) return null;
+  const raw = dataBuffer.join("\n");
   let data: any = raw;
   const first = raw[0];
   if (first === "{" || first === "[") {
@@ -30,12 +23,14 @@ function flushEvent(state: ParseState) {
     }
   }
   const result: LineData = {
-    ...state.lineData,
+    id: lineData.id,
+    event: lineData.event,
     data,
   };
 
-  state.lineData = {};
-  state.dataBuffer.length = 0;
+  // Reset state for next event
+  lineData = { data: null };
+  dataBuffer.length = 0;
   return result;
 }
 
@@ -46,10 +41,11 @@ function flushEvent(state: ParseState) {
  * Returns complete event data when an empty line is encountered,
  * otherwise updates internal state and returns null.
  */
-export function parseLine(line: string, state: ParseState): LineData | null {
+export function parseLine(line: string): LineData | null {
   // Empty line indicates the end of an event - process and return accumulated data
   if (line === "") {
-    return flushEvent(state);
+    const data = flushEvent();
+    return data;
   }
 
   // Skip comment lines (start with ':')

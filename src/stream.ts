@@ -1,5 +1,5 @@
 import type { LineData, SSEProps } from "./types";
-import { parseLine, createParseState } from "./parseLine";
+import { parseLine } from "./parseLine";
 
 // Queue to store parsed line data
 export async function parseSSEStream<T = any>({
@@ -7,7 +7,6 @@ export async function parseSSEStream<T = any>({
   options,
 }: SSEProps) {
   const decoder = new TextDecoder();
-  const state = createParseState();
   while (true) {
     try {
       const { value, done } = await renderStream.read();
@@ -21,7 +20,7 @@ export async function parseSSEStream<T = any>({
 
         let msg;
         try {
-          msg = parseLine(lineVal, state);
+          msg = parseLine(lineVal);
           // Check for DONE flag and terminate if found
           if (msg && msg.data === "[DONE]") {
             return;
