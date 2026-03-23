@@ -1,13 +1,13 @@
 import type { LineData, SSEProps } from "./types";
-import { parseLine } from "./parseLine";
+import { parseLine, createParseState } from "./parseLine";
 
 // Queue to store parsed line data
-const queue = [] as LineData[];
 export async function parseSSEStream<T = any>({
   renderStream,
   options,
 }: SSEProps) {
   const decoder = new TextDecoder();
+  const state = createParseState();
   while (true) {
     try {
       const { value, done } = await renderStream.read();
@@ -16,13 +16,12 @@ export async function parseSSEStream<T = any>({
       // Decode and split text into lines
       const text = decoder.decode(value);
       const lines = text.split("\n");
-      console.error("66666666666666", lines);
       for (const line of lines) {
         const lineVal = line.trimEnd();
 
         let msg;
         try {
-          msg = parseLine(lineVal);
+          msg = parseLine(lineVal, state);
           // Check for DONE flag and terminate if found
           if (msg && msg.data === "[DONE]") {
             return;
@@ -36,7 +35,6 @@ export async function parseSSEStream<T = any>({
 
         // Process non-null messages
         if (msg && msg.data != null) {
-          queue.push(msg);
           options.onMessage(msg);
         }
       }

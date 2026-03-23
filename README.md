@@ -1,21 +1,10 @@
-# SSE Stream Parser
+# sse-line-parser
 
-A **lightweight, pure, production-ready SSE (Server-Sent Events) stream parser**, implemented based on the standard SSE protocol. It is independent of specific application scenarios and can be widely used in various SSE data stream parsing tasks. It does not involve request management or connection interruption, focusing solely on doing one thing: **parsing streams cleanly**.
-
----
-
-## ✨ Features
-
-- ✅ **Pure SSE stream parsing**, no concern for request lifecycle
-- ✅ Supports standard `data:` protocol format, compatible with all SSE-based services
-- ✅ Built-in `[DONE]` early identification and quick skipping
-- ✅ Low GC pressure, avoiding unnecessary object creation
-- ✅ Runs on **Node.js ≥ 18** (native `fetch` + `ReadableStream`)
-- ✅ Native TypeScript support with clear types
+A lightweight, zero-dependency SSE (Server-Sent Events) stream parser. It does one thing: parse a `ReadableStream` into structured event objects. No request management, no reconnection logic, no EventEmitter abstraction.
 
 ---
 
-## 📦 Installation
+## Installation
 
 ```bash
 pnpm add sse-line-parser
@@ -27,51 +16,25 @@ yarn add sse-line-parser
 
 ---
 
-## 🧠 Design Philosophy
-
-> **Parse streams only, no control logic**
-
-This plugin will **NOT**:
-
-- ❌ Manage request interruption/abort
-- ❌ Wrap fetch
-- ❌ Maintain connection status
-- ❌ Introduce EventEmitter/Rx/class abstractions
-
-This plugin is **only responsible for**:
-
-- ✔ Parse `ReadableStreamDefaultReader<Uint8Array<ArrayBuffer>>`
-- ✔ Split SSE lines
-- ✔ Parse `data:` content
-- ✔ Identify `[DONE]`
-
----
-
-## 🚀 Basic Usage
-
-### 1️⃣ Basic Example (Node.js / Edge)
+## Quick Start
 
 ```ts
-import { parseSSEStream } from "sse-line-parser";
+import parseSSEStream from "sse-line-parser";
 
-const res = await fetch(url, options);
-
-if (!res.body) return;
-
-const reader = res.body.getReader();
+const res = await fetch("/api/chat", { method: "POST", body: "..." });
+const reader = res.body!.getReader();
 
 await parseSSEStream({
   renderStream: reader,
   options: {
-    onMessage(data) {
-      // data is the parsed SSE message
-      console.log(data);
+    onMessage(msg) {
+      console.log(msg.event, msg.data);
     },
     onDone() {
       console.log("stream finished");
     },
     onError(err) {
-      console.error("Error reading stream:", err);
+      console.error(err);
     },
   },
 });
@@ -79,59 +42,94 @@ await parseSSEStream({
 
 ---
 
-## 🔍 `[DONE]` Processing Logic
+## What It Parses
 
-Plugin internally optimizes for the following case:
+Each SSE event block is parsed into a `LineData` object:
 
-```txt
+```
+id: 1
+event: message
+data: {"text":"hello world"}
+
+```
+
+```ts
+{
+  id: 1,
+  event: "message",
+  data: { text: "hello world" }  // auto JSON.parse if content starts with { or [
+}
+```
+
+Multi-line `data` fields are joined with `\n` before parsing:
+
+```
+data: {"text":"hel
+data: lo world"}
+
+```
+
+```ts
+{
+  data: {
+    text: "hello world";
+  }
+}
+```
+
+`[DONE]` signals end of stream and stops processing immediately:
+
+```
 data: [DONE]
 ```
 
-- Early identification of `[DONE]`
-- **Skip JSON.parse**
-- Immediately trigger `onDone`
-- Subsequent data is skipped directly
+---
 
-Avoid meaningless parsing and exception catching.
+## API
+
+### `parseSSEStream(props)`
+
+| Field               | Type                                      | Description                               |
+| ------------------- | ----------------------------------------- | ----------------------------------------- |
+| `renderStream`      | `ReadableStreamDefaultReader<Uint8Array>` | Stream reader from `res.body.getReader()` |
+| `options.onMessage` | `(msg: LineData) => void`                 | Called for each complete event            |
+| `options.onDone`    | `() => void`                              | Called when stream ends normally          |
+| `options.onError`   | `(err: Error) => void`                    | Called on parse errors                    |
+
+### `LineData`
+
+```ts
+type LineData = {
+  id?: number;
+  event?: string;
+  data: Record<string, any> | string | null;
+  error?: string;
+};
+```
 
 ---
 
-## ⚙️ API Documentation
+## Design Philosophy
 
-### `parseSSEStream(options)`
+This library handles **only stream parsing**. It will not:
 
-#### Parameters
+- Wrap `fetch` or manage requests
+- Handle reconnection or `retry` fields
+- Maintain connection state
+- Introduce class-based or reactive abstractions
 
-| Parameter           | Type                                      | Description                                    |
-| ------------------- | ----------------------------------------- | ---------------------------------------------- |
-| `renderStream`      | `ReadableStreamDefaultReader<Uint8Array>` | Reader for SSE response body                   |
-| `options`           | `StreamOptions`                           | Options object containing callbacks            |
-| `options.onMessage` | `(data: T) => void`                       | Callback for each message                      |
-| `options.onDone`    | `() => void`                              | Triggered when `[DONE]` is received (optional) |
-| `options.onError`   | `(err: Error) => void`                    | Parsing error callback (optional)              |
+If you need those features, build them on top — the parser itself stays simple and composable.
 
 ---
 
-## 🌍 Runtime Environment
+## Runtime Support
 
-- Node.js **>= 18**
+- Node.js >= 18
+- Browser (native `ReadableStream`)
 - Bun / Deno / Edge Runtime
-- Browser (requires `ReadableStream` support)
 
 ---
 
-## 🧱 Use Cases
-
-- SSE for AI services like OpenAI/Claude/Gemini
-- Real-time data push services
-- Real-time updates for stock quotes, weather data, etc.
-- Real-time log stream monitoring
-- Custom SSE services
-- Streaming consumption on Web/Node/Edge
-- Infrastructure / SDK / Middleware layers
-
----
-
-## 📜 License
+## License
 
 MIT

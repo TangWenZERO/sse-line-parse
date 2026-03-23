@@ -1,14 +1,43 @@
-// Define the structure for parsed Server-Sent Event (SSE) line data
 export type LineData = {
   id?: number;
   event?: string;
   data: Record<string, any> | string | null;
   error?: string;
 };
+// Define the structure for parsed Server-Sent Event (SSE) line data
+export type ParseState = {
+  lineData: Omit<LineData, "data">;
+  dataBuffer: string[];
+};
+export function createParseState(): ParseState {
+  return { lineData: {}, dataBuffer: [] };
+}
 
 // Global state variables to maintain parsing context across multiple lines
 let lineData: LineData = { data: null }; // Stores event metadata (id, event type)
 let dataBuffer: string[] = []; // Accumulates multi-line data segments
+
+function flushEvent(state: ParseState) {
+  if (state.dataBuffer.length === 0) return null;
+  const raw = state.dataBuffer.join("\n");
+  let data: any = raw;
+  const first = raw[0];
+  if (first === "{" || first === "[") {
+    try {
+      data = JSON.parse(raw);
+    } catch {
+      data = raw;
+    }
+  }
+  const result: LineData = {
+    ...state.lineData,
+    data,
+  };
+
+  state.lineData = {};
+  state.dataBuffer.length = 0;
+  return result;
+}
 
 /**
  * Parses a single line of Server-Sent Events (SSE) protocol
@@ -17,35 +46,10 @@ let dataBuffer: string[] = []; // Accumulates multi-line data segments
  * Returns complete event data when an empty line is encountered,
  * otherwise updates internal state and returns null.
  */
-export function parseLine(line: string): LineData | null {
+export function parseLine(line: string, state: ParseState): LineData | null {
   // Empty line indicates the end of an event - process and return accumulated data
   if (line === "") {
-    if (dataBuffer.length === 0) return null;
-
-    const raw = dataBuffer.join("\n");
-
-    // Initialize data as raw string, attempt JSON parsing if it looks like JSON
-    let data: any = raw;
-    const first = raw[0];
-    if (first === "{" || first === "[") {
-      try {
-        data = JSON.parse(raw);
-      } catch {
-        data = raw;
-      }
-    }
-
-    // Create result with accumulated event data
-    const result: LineData = {
-      id: lineData.id,
-      event: lineData.event,
-      data,
-    };
-
-    // Reset state for next event
-    lineData = { data: null };
-    dataBuffer.length = 0;
-    return result;
+    return flushEvent(state);
   }
 
   // Skip comment lines (start with ':')
